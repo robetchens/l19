@@ -1,0 +1,105 @@
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes" />
+    <title>S26 Little Maestro Virtual Studio</title>
+    <link rel="shortcut icon" href="TemplateData/favicon.ico" />
+    <link rel="stylesheet" href="TemplateData/style.css" />
+    <meta name="theme-color" content="#ffffff" />
+  </head>
+  <body>
+    <div id="unity-container">
+      <canvas id="unity-canvas" width="1920" height="1080" tabindex="-1"></canvas>
+      <div id="unity-loading-bar">
+        <div id="unity-logo"></div>
+        <div id="unity-progress-bar-empty">
+          <div id="unity-progress-bar-full"></div>
+        </div>
+      </div>
+      <div id="unity-warning"></div>
+    </div>
+
+    <script>
+      window.addEventListener("load", () => {
+        if ("serviceWorker" in navigator) navigator.serviceWorker.register("ServiceWorker.js");
+      });
+
+      const canvas = document.getElementById("unity-canvas");
+      const loadingBar = document.getElementById("unity-loading-bar");
+      const progressBarFull = document.getElementById("unity-progress-bar-full");
+
+      function unityShowBanner(msg, type) {
+        console.log(msg);
+      }
+
+      const buildUrl = "Build";
+      const loaderUrl = buildUrl + "/Build WebGl.loader.js";
+      const config = {
+        dataUrl: buildUrl + "/Build WebGl.data.unityweb",
+        frameworkUrl: buildUrl + "/Build WebGl.framework.js.unityweb",
+        codeUrl: buildUrl + "/Build WebGl.wasm.unityweb",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "Kinderkloud",
+        productName: "Little Maestro - Virtual Studio",
+        productVersion: "0.1",
+        showBanner: unityShowBanner,
+      };
+
+      // Start loading
+      loadingBar.style.display = "block";
+      progressBarFull.style.width = "0%";
+
+      const script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = () => {
+        createUnityInstance(canvas, config, (progress) => {
+          progressBarFull.style.width = (100 * progress) + "%";
+        }).then((unityInstance) => {
+          // Hide loading overlay when loaded
+          loadingBar.style.display = "none";
+
+          // Setup MediaRecorder
+          const canvasStream = canvas.captureStream();
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const dest = audioCtx.createMediaStreamDestination();
+          unityInstance.Module.audioContext = audioCtx;
+          unityInstance.Module.gameAudioDest = dest;
+          const mixedStream = new MediaStream([
+            ...canvasStream.getVideoTracks(),
+            ...dest.stream.getAudioTracks()
+          ]);
+
+          window._recorderChunks = [];
+          window._mediaRecorder = new MediaRecorder(mixedStream);
+          window._mediaRecorder.ondataavailable = e => window._recorderChunks.push(e.data);
+          window._mediaRecorder.onstop = () => {
+            const blob = new Blob(window._recorderChunks, { type: "video/webm" });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement("a");
+            a.href     = url;
+            a.download = "recording.webm";
+            a.click();
+            window._recorderChunks = [];
+          };
+        }).catch(err => {
+          console.error(err);
+          loadingBar.style.display = "none";
+        });
+      };
+      document.body.appendChild(script);
+
+      // Exported functions
+      mergeInto(LibraryManager.library, {
+        StartJSRecording: function() {
+          if (window._mediaRecorder && window._mediaRecorder.state === "inactive")
+            window._mediaRecorder.start();
+        },
+        StopJSRecording: function() {
+          if (window._mediaRecorder && window._mediaRecorder.state === "recording")
+            window._mediaRecorder.stop();
+        }
+      });
+    </script>
+</body>
+</html>

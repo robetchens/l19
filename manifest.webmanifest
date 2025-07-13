@@ -1,0 +1,12 @@
+{
+    "name": "S26 Little Maestro Virtual Studio",
+    "short_name": "S26 Little Maestro Virtual Studio",
+    "start_url": "index.html",
+    "display": "fullscreen",
+    "background_color": "#FFFFFF",
+    "theme_color": "#000",
+    "description": "Little Maestro",
+    "icons": [
+      {"src":"/android-chrome-192x192.png","sizes":"192x192","type":"image/png"},
+      {"src":"/android-chrome-512x512.png","sizes":"512x512","type":"image/png"}]
+  }
